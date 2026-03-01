@@ -1,0 +1,45 @@
+# Swift Package Manager
+.build/
+.swiftpm/
+
+# Xcode
+*.xcodeproj
+*.xcworkspace
+!*.xcworkspace/contents.xcworkspacedata
+xcuserdata/
+DerivedData/
+*.moved-aside
+*.orig
+*.rej
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Instruments
+*.trace
+
+# SPM resolved file (commit this — it locks dependency versions)
+# Package.resolved  ← keep committed
+
+# Coverage
+*.lcov
+coverage/
+
+# Environment / secrets
+.env
+*.secret
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Build artifacts
+*.o
+*.a
+*.dylib
