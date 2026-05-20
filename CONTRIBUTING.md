@@ -20,7 +20,7 @@ FlowMotion values:
 
 ```bash
 # Clone
-git clone https://github.com/yourusername/FlowMotion
+git clone https://github.com/GRimAce11/FlowMotion
 cd FlowMotion
 
 # Build

@@ -44,7 +44,7 @@ Add the package to your `Package.swift` dependencies:
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/yourusername/FlowMotion", from: "1.0.0")
+    .package(url: "https://github.com/GRimAce11/FlowMotion", from: "1.0.0")
 ],
 targets: [
     .target(name: "MyApp", dependencies: ["FlowMotion"])

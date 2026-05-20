@@ -127,5 +127,5 @@ FlowMotion uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
-[Unreleased]: https://github.com/yourusername/FlowMotion/compare/v0.1.0...HEAD
-[0.1.0]: https://github.com/yourusername/FlowMotion/releases/tag/v0.1.0
+[Unreleased]: https://github.com/GRimAce11/FlowMotion/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/GRimAce11/FlowMotion/releases/tag/v0.1.0
