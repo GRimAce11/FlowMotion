@@ -8,44 +8,46 @@ struct HomeScreen: View {
     @Namespace private var heroNamespace
     @Environment(\.flowStyle) private var style
 
-    @State private var appeared = false
-    @State private var showAll  = false
+    // Per-card visibility so cards are never in the layout while invisible.
+    // opacity(0) preserves layout space; conditional rendering removes it.
+    @State private var appeared        = false
+    @State private var showHeader      = false
+    @State private var showChips       = false
+    @State private var showCards       = Array(repeating: false, count: DemoItem.samples.count)
+    @State private var showFooter      = false
 
     var body: some View {
-        // A single VStack (not LazyVStack) as the direct child of ScrollView.
-        // LazyVStack inside VStack inside ScrollView is a known SwiftUI layout
-        // bug where the lazy stack is positioned at the bottom of the viewport.
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
-                header
-                    .padding(.horizontal, 20)
-                    .padding(.top, 12)
-                    .padding(.bottom, 20)
 
-                capabilityChips
-                    .padding(.bottom, 12)
+                if showHeader {
+                    header
+                        .padding(.horizontal, 20)
+                        .padding(.top, 12)
+                        .padding(.bottom, 20)
+                        .transition(.opacity.combined(with: .move(edge: .top)))
+                }
 
+                if showChips {
+                    capabilityChips
+                        .padding(.bottom, 12)
+                        .transition(.opacity)
+                }
+
+                // Cards — each added individually so stagger creates no gap
                 cardStack
 
-                Divider()
-                    .padding(.horizontal, 20)
-                    .padding(.vertical, 8)
+                if showFooter {
+                    Divider()
+                        .padding(.horizontal, 20)
+                        .padding(.vertical, 8)
 
-                systemDemoRow
-                    .opacity(showAll ? 1 : 0)
-                    .animation(.flowSmooth.delay(0.45), value: showAll)
-
-                orchestratorCard
-                    .opacity(showAll ? 1 : 0)
-                    .animation(.flowSmooth.delay(0.50), value: showAll)
-
-                gestureCard
-                    .opacity(showAll ? 1 : 0)
-                    .animation(.flowSmooth.delay(0.55), value: showAll)
+                    systemDemoRow
+                    orchestratorCard
+                    gestureCard
+                }
             }
             .padding(.bottom, 40)
-            // Without this the VStack can stretch to fill the full ScrollView
-            // height, which displaces the content.
             .frame(maxWidth: .infinity, alignment: .topLeading)
         }
         .scrollIndicators(.hidden)
@@ -56,12 +58,26 @@ struct HomeScreen: View {
         .onAppear {
             guard !appeared else { return }
             appeared = true
-            // Let NavigationStack's own appear animation settle (~1 frame)
-            // before starting FlowMotion entrance.
-            Task { @MainActor in
-                try? await Task.sleep(nanoseconds: 150_000_000)  // 150 ms
-                withAnimation(.flowHero) { showAll = true }
+            runEntrance()
+        }
+    }
+
+    @MainActor
+    private func runEntrance() {
+        Task { @MainActor in
+            // 1. Header + chips
+            try? await Task.sleep(nanoseconds: 120_000_000)
+            withAnimation(.flowSmooth) { showHeader = true; showChips = true }
+
+            // 2. Cards staggered — 70 ms apart
+            for i in 0..<DemoItem.samples.count {
+                try? await Task.sleep(nanoseconds: 70_000_000)
+                withAnimation(.flowHero) { showCards[i] = true }
             }
+
+            // 3. Footer rows
+            try? await Task.sleep(nanoseconds: 60_000_000)
+            withAnimation(.flowSmooth) { showFooter = true }
         }
     }
 
@@ -92,9 +108,6 @@ struct HomeScreen: View {
                 .font(.footnote)
                 .foregroundStyle(.tertiary)
         }
-        .opacity(showAll ? 1 : 0)
-        .offset(y: showAll ? 0 : 10)
-        .animation(.flowHero, value: showAll)
     }
 
     // MARK: - Capability chips (plain HStack — no nested ScrollView)
@@ -117,29 +130,30 @@ struct HomeScreen: View {
         // Explicit height so the horizontal ScrollView doesn't expand
         // vertically and displace the cards below it.
         .frame(height: 38)
-        .opacity(showAll ? 1 : 0)
-        .animation(.flowSmooth.delay(0.08), value: showAll)
     }
 
-    // MARK: - Card stack (plain VStack — not LazyVStack)
+    // MARK: - Card stack
+    // Each card is conditionally rendered so hidden cards take zero layout space.
 
     private var cardStack: some View {
         VStack(spacing: 16) {
             ForEach(Array(DemoItem.samples.enumerated()), id: \.element.id) { index, item in
-                FlowMotionLink(id: item.id, namespace: heroNamespace) {
-                    DemoCard(item: item)
-                        .frame(height: 180)
-                } destination: {
-                    CardDetailScreen(item: item, namespace: heroNamespace)
+                if index < showCards.count && showCards[index] {
+                    FlowMotionLink(id: item.id, namespace: heroNamespace) {
+                        DemoCard(item: item)
+                            .frame(height: 180)
+                    } destination: {
+                        CardDetailScreen(item: item, namespace: heroNamespace)
+                    }
+                    .flowSpringTap(scale: 0.96)
+                    .padding(.horizontal, 20)
+                    .transition(
+                        .asymmetric(
+                            insertion: .opacity.combined(with: .scale(scale: 0.94, anchor: .center)),
+                            removal:   .opacity
+                        )
+                    )
                 }
-                .flowSpringTap(scale: 0.96)
-                .padding(.horizontal, 20)
-                .opacity(showAll ? 1 : 0)
-                .scaleEffect(showAll ? 1 : 0.94, anchor: .center)
-                .animation(
-                    .flowHero.delay(0.1 + Double(index) * 0.06),
-                    value: showAll
-                )
             }
         }
     }
