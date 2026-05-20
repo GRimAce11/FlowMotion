@@ -2,29 +2,28 @@ import SwiftUI
 
 // MARK: - FlowMotionLink
 
-/// A navigation link that animates a shared element from source to destination.
+/// A navigation link that coordinates a shared-element hero animation
+/// alongside a standard NavigationStack push transition.
 ///
-/// `FlowMotionLink` is the primary API for hero/shared-element transitions.
-/// On activation it:
-/// 1. Captures the source element's global frame.
-/// 2. Pushes the destination onto the navigation stack.
-/// 3. Animates a hero layer from source → destination frame.
+/// `FlowMotionLink` wraps SwiftUI's `NavigationLink` (not a `Button` with
+/// `navigationDestination`) so navigation works correctly inside any
+/// container — `LazyVStack`, `List`, `ScrollView`, etc.
+///
+/// The hero animation is triggered via `.simultaneousGesture` so it fires
+/// at the same time as the navigation without blocking it.
 ///
 /// ## Usage
 /// ```swift
-/// @Namespace var heroNamespace
+/// @Namespace var ns
 ///
-/// FlowMotionLink(id: item.id, namespace: heroNamespace) {
+/// FlowMotionLink(id: item.id, namespace: ns) {
 ///     CardView(item)
-///         .sharedElement(id: item.id, namespace: heroNamespace)
+///         .sharedElement(id: item.id, namespace: ns)
 /// } destination: {
 ///     DetailView(item)
-///         .sharedElementDestination(id: item.id, namespace: heroNamespace)
+///         .sharedElementDestination(id: item.id, namespace: ns)
 /// }
 /// ```
-///
-/// - Note: Wrap the root view with `.flowMotionSetup()` to install the overlay
-///   infrastructure required by this component.
 public struct FlowMotionLink<Source: View, Destination: View>: View {
 
     // MARK: Properties
@@ -35,9 +34,7 @@ public struct FlowMotionLink<Source: View, Destination: View>: View {
     private let destination: () -> Destination
     private let springConfig: SpringConfiguration
 
-    @State private var isPresented = false
     @State private var sourceFrame: CGRect = .zero
-
     private let registry = SharedElementRegistry.shared
 
     // MARK: Init
@@ -49,59 +46,60 @@ public struct FlowMotionLink<Source: View, Destination: View>: View {
         @ViewBuilder source: @escaping () -> Source,
         @ViewBuilder destination: @escaping () -> Destination
     ) {
-        self.id = AnyHashable(id)
-        self.namespace = namespace
+        self.id          = AnyHashable(id)
+        self.namespace   = namespace
         self.springConfig = spring
-        self.source = source
+        self.source      = source
         self.destination = destination
     }
 
     // MARK: Body
 
     public var body: some View {
-        Button {
-            activateTransition()
+        NavigationLink {
+            destination()
+                .captureGeometry(id: id, role: .destination)
+                .environment(\.heroRole, .destination(id: id))
         } label: {
             source()
                 .captureGeometry(id: id, role: .source)
         }
         .buttonStyle(.plain)
-        .background(
-            GeometryReader { proxy in
-                Color.clear.onAppear {
-                    sourceFrame = proxy.frame(in: .global)
-                }
-                .onChange(of: proxy.frame(in: .global)) { _, newFrame in
-                    sourceFrame = newFrame
-                }
+        // Hero trigger fires at the same time as the NavigationLink push,
+        // without consuming the tap that drives navigation.
+        .simultaneousGesture(
+            TapGesture().onEnded { _ in
+                triggerHeroAnimation()
             }
         )
-        .navigationDestination(isPresented: $isPresented) {
-            destination()
-                .captureGeometry(id: id, role: .destination)
-                .environment(\.heroRole, .destination(id: id))
-        }
+        // Capture source frame continuously so it's fresh at tap time.
+        .background(
+            GeometryReader { proxy in
+                Color.clear
+                    .onAppear { sourceFrame = proxy.frame(in: .global) }
+                    .onChange(of: proxy.frame(in: .global)) { _, frame in
+                        sourceFrame = frame
+                    }
+            }
+        )
     }
 
-    // MARK: - Transition activation
+    // MARK: - Hero animation
 
     @MainActor
-    private func activateTransition() {
+    private func triggerHeroAnimation() {
         let capturedSource = registry.frame(for: id) ?? sourceFrame
 
-        isPresented = true
-
-        // Give the destination a frame to animate toward (resolved on appear)
         Task { @MainActor in
-            // Wait one layout pass for destination to register its frame
-            try? await Task.sleep(nanoseconds: 16_666_667) // ~1 frame @ 60Hz
+            // One layout pass — give the destination view time to appear
+            // and register its frame before we read it.
+            try? await Task.sleep(nanoseconds: 33_333_334)  // ~2 frames @ 60Hz
 
-            let destinationFrame = registry.frame(for: id) ?? capturedSource
-
+            let destFrame = registry.frame(for: id) ?? capturedSource
             registry.beginHero(
                 id: id,
                 sourceFrame: capturedSource,
-                destinationFrame: destinationFrame,
+                destinationFrame: destFrame,
                 configuration: springConfig,
                 onCompletion: {}
             )
@@ -109,13 +107,10 @@ public struct FlowMotionLink<Source: View, Destination: View>: View {
     }
 }
 
-// MARK: - SharedElement modifier
+// MARK: - SharedElement modifiers
 
 public extension View {
-    /// Marks this view as a shared element participating in hero transitions.
-    ///
-    /// Apply to the source view inside `FlowMotionLink` and the corresponding
-    /// element inside the destination view.
+    /// Marks this view as a shared element source.
     func sharedElement<ID: Hashable>(
         id: ID,
         namespace: Namespace.ID,

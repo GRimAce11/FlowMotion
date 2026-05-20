@@ -211,7 +211,8 @@ struct SpringTapModifier: ViewModifier {
     func body(content: Content) -> some View {
         content
             .scaleEffect(pressing ? targetScale : scale)
-            .gesture(
+            // simultaneousGesture so parent Button / NavigationLink still fires
+            .simultaneousGesture(
                 DragGesture(minimumDistance: 0)
                     .updating($pressing) { _, state, _ in state = true }
                     .onEnded { _ in

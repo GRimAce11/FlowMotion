@@ -101,6 +101,7 @@ struct HomeScreen: View {
                 } destination: {
                     CardDetailScreen(item: item, namespace: heroNamespace)
                 }
+                .flowSpringTap(scale: 0.96)
                 .padding(.horizontal, 20)
                 .opacity(cardsVisible ? 1 : 0)
                 .offset(y: cardsVisible ? 0 : 24)

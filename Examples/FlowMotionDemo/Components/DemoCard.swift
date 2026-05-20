@@ -40,7 +40,8 @@ struct DemoCard: View {
         .shadow(color: item.gradient.first?.opacity(0.4) ?? .clear, radius: 20, y: 8)
         .scaleEffect(appeared ? 1 : 0.92)
         .opacity(appeared ? 1 : 0)
-        .flowSpringTap()
+        // Spring-tap is applied externally (on FlowMotionLink) so it doesn't
+        // compete with the NavigationLink gesture inside.
     }
 
     func appear(delay: Double) -> some View {
