@@ -4,6 +4,8 @@
 
 # Xcode
 *.xcodeproj
+!Examples/**/*.xcodeproj/project.pbxproj
+!Examples/**/*.xcodeproj/xcshareddata/**
 *.xcworkspace
 !*.xcworkspace/contents.xcworkspacedata
 xcuserdata/
@@ -11,6 +13,7 @@ DerivedData/
 *.moved-aside
 *.orig
 *.rej
+*.xcuserstate
 
 # macOS
 .DS_Store
