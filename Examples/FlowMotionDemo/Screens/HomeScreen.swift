@@ -96,8 +96,8 @@ struct HomeScreen: View {
             ForEach(Array(DemoItem.samples.enumerated()), id: \.element.id) { index, item in
                 FlowMotionLink(id: item.id, namespace: heroNamespace) {
                     DemoCard(item: item)
-                        .frame(height: 180)
                         .appear(delay: Double(index) * style.staggerInterval)
+                        .frame(height: 180)
                 } destination: {
                     CardDetailScreen(item: item, namespace: heroNamespace)
                 }

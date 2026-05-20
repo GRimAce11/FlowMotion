@@ -117,12 +117,12 @@ private struct SpringDragDemo: View {
                 Circle()
                     .fill(
                         LinearGradient(
-                            colors: [.accentColor, .accentColor.opacity(0.6)],
+                            colors: [Color.accentColor, Color.accentColor.opacity(0.6)],
                             startPoint: .topLeading, endPoint: .bottomTrailing
                         )
                     )
                     .frame(width: 60, height: 60)
-                    .shadow(color: .accentColor.opacity(0.4), radius: 12, y: 4)
+                    .shadow(color: Color.accentColor.opacity(0.4), radius: 12, y: 4)
                     .offset(offset)
                     .scaleEffect(isDragging ? 1.15 : 1)
                     .gesture(
@@ -198,7 +198,7 @@ private struct VelocityHandoffDemo: View {
                     Circle()
                         .fill(Color.accentColor.gradient)
                         .frame(width: 60, height: 60)
-                        .shadow(color: .accentColor.opacity(0.35), radius: 8)
+                        .shadow(color: Color.accentColor.opacity(0.35), radius: 8)
                         .offset(x: position * width / 2)
                         .gesture(
                             DragGesture()
@@ -292,7 +292,7 @@ private struct InteractiveDismissDemo: View {
                 VStack(spacing: 16) {
                     Image(systemName: "hand.draw.fill")
                         .font(.system(size: 48))
-                        .foregroundStyle(.accentColor)
+                        .foregroundStyle(Color.accentColor)
                     Text("Drag down to dismiss")
                         .font(.title3.bold())
                     Text("Velocity-aware — a fast flick commits even at low drag progress.")

@@ -140,7 +140,7 @@ private struct ScreenEntranceDemo: View {
 
             Text("Get started →")
                 .font(.callout.weight(.semibold))
-                .foregroundStyle(.accentColor)
+                .foregroundStyle(Color.accentColor)
                 .opacity(ctaOpacity)
         }
         .padding(24)
