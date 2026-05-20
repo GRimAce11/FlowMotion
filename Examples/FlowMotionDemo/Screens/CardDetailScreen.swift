@@ -8,29 +8,32 @@ struct CardDetailScreen: View {
     let item: DemoItem
     let namespace: Namespace.ID
 
-    @State private var titleVisible   = false
-    @State private var bodyVisible    = false
-    @State private var actionsVisible = false
+    // Driven entirely by a single Bool so SwiftUI has one clear
+    // dependency to animate against — simpler and more reliable than
+    // separate state per element.
+    @State private var contentVisible = false
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
                 heroHeader
-
-                VStack(alignment: .leading, spacing: 24) {
-                    descriptionSection
-                    featureHighlights
-                    demoSection
-                    actionsRow
-                }
-                .padding(24)
+                contentBody
             }
         }
         .scrollIndicators(.hidden)
         .background(Color(.systemGroupedBackground))
         .navigationBarTitleDisplayMode(.inline)
+        // Interactive dismiss so users can drag back
         .flowInteractiveDismiss(edge: .bottom)
-        .onAppear { runEntranceAnimation() }
+        .onAppear {
+            // Small delay lets the zoom/push animation finish before
+            // content starts animating in, so both play cleanly.
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
+                withAnimation(.spring(response: 0.5, dampingFraction: 0.78)) {
+                    contentVisible = true
+                }
+            }
+        }
     }
 
     // MARK: - Hero header
@@ -42,200 +45,187 @@ struct CardDetailScreen: View {
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
             )
-            .frame(height: 280)
-            .sharedElementDestination(id: item.id, namespace: namespace)
+            .frame(height: 300)
 
-            // Icon
+            // Large icon
             Image(systemName: item.icon)
-                .font(.system(size: 56, weight: .bold))
+                .font(.system(size: 64, weight: .bold))
                 .foregroundStyle(.white)
-                .shadow(color: .black.opacity(0.2), radius: 8)
+                .shadow(color: .black.opacity(0.15), radius: 8)
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
-                .padding(.bottom, 40)
+                .padding(.bottom, 48)
 
-            // Title overlay
+            // Title
             VStack(alignment: .leading, spacing: 2) {
                 Text(item.title)
                     .font(.largeTitle.bold())
                     .foregroundStyle(.white)
                 Text(item.subtitle)
                     .font(.headline)
-                    .foregroundStyle(.white.opacity(0.75))
+                    .foregroundStyle(.white.opacity(0.8))
             }
             .padding(.horizontal, 24)
             .padding(.bottom, 28)
         }
     }
 
-    // MARK: - Description
+    // MARK: - Content body
 
-    private var descriptionSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
+    private var contentBody: some View {
+        VStack(alignment: .leading, spacing: 24) {
+            overviewSection
+            featuresSection
+            liveDemoSection
+            actionsSection
+        }
+        .padding(24)
+    }
+
+    // Each section offsets from below and fades in, staggered.
+
+    private var overviewSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
             Text("Overview")
                 .font(.title3.bold())
-                .opacity(titleVisible ? 1 : 0)
-                .offset(y: titleVisible ? 0 : 10)
+                .opacity(contentVisible ? 1 : 0)
+                .offset(y: contentVisible ? 0 : 20)
+                .animation(.spring(response: 0.45, dampingFraction: 0.8).delay(0.0), value: contentVisible)
 
             Text(item.detail)
                 .font(.body)
                 .foregroundStyle(.secondary)
                 .lineSpacing(4)
-                .opacity(bodyVisible ? 1 : 0)
-                .offset(y: bodyVisible ? 0 : 8)
+                .opacity(contentVisible ? 1 : 0)
+                .offset(y: contentVisible ? 0 : 16)
+                .animation(.spring(response: 0.45, dampingFraction: 0.8).delay(0.05), value: contentVisible)
         }
     }
 
-    // MARK: - Feature highlights
-
-    private var featureHighlights: some View {
+    private var featuresSection: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text("Features")
                 .font(.title3.bold())
-                .opacity(bodyVisible ? 1 : 0)
+                .opacity(contentVisible ? 1 : 0)
+                .offset(y: contentVisible ? 0 : 16)
+                .animation(.spring(response: 0.45, dampingFraction: 0.8).delay(0.10), value: contentVisible)
 
-            ForEach(featurePoints, id: \.self) { point in
+            ForEach(Array(featurePoints.enumerated()), id: \.offset) { index, point in
                 Label(point, systemImage: "checkmark.circle.fill")
                     .font(.callout)
                     .foregroundStyle(.primary)
-                    .opacity(bodyVisible ? 1 : 0)
+                    .opacity(contentVisible ? 1 : 0)
+                    .offset(y: contentVisible ? 0 : 12)
+                    .animation(
+                        .spring(response: 0.4, dampingFraction: 0.8)
+                            .delay(0.12 + Double(index) * 0.04),
+                        value: contentVisible
+                    )
             }
         }
     }
+
+    @ViewBuilder
+    private var liveDemoSection: some View {
+        if item.icon == "waveform.path" {
+            SpringDemoView()
+                .opacity(contentVisible ? 1 : 0)
+                .offset(y: contentVisible ? 0 : 20)
+                .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.30), value: contentVisible)
+        } else if item.icon == "drop.fill" {
+            LiquidDemoView()
+                .opacity(contentVisible ? 1 : 0)
+                .offset(y: contentVisible ? 0 : 20)
+                .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.30), value: contentVisible)
+        }
+    }
+
+    private var actionsSection: some View {
+        HStack(spacing: 12) {
+            actionButton(label: "Docs", icon: "doc.text", primary: true) {}
+            actionButton(label: "Source", icon: "chevron.left.forwardslash.chevron.right", primary: false) {}
+        }
+        .opacity(contentVisible ? 1 : 0)
+        .offset(y: contentVisible ? 0 : 16)
+        .animation(.spring(response: 0.45, dampingFraction: 0.8).delay(0.40), value: contentVisible)
+    }
+
+    private func actionButton(label: String, icon: String, primary: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Label(label, systemImage: icon)
+                .font(.callout.weight(.semibold))
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 14)
+                .background(primary ? Color.accentColor : Color(.secondarySystemGroupedBackground))
+                .foregroundStyle(primary ? .white : .primary)
+                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        }
+        .flowSpringTap()
+    }
+
+    // MARK: - Feature points
 
     private var featurePoints: [String] {
         switch item.icon {
         case "drop.fill":
-            return ["Sinusoidal edge displacement", "Canvas-based rendering", "60fps/120fps capable", "Reduce-motion compatible"]
+            return ["Sinusoidal Canvas mask morphing", "Metaball compositing (blur + contrast)", "60 / 120 fps capable", "Reduce-motion safe fallback"]
         case "star.fill":
-            return ["Geometry captured at nav moment", "Spring-interpolated flight", "Interruptible mid-flight", "Navigation-stack aware"]
+            return ["Geometry captured via PreferenceKey", "iOS 18 native zoom transition", "Spring-interpolated hero overlay", "Works inside any scroll container"]
         case "waveform.path":
-            return ["Closed-form analytical solver", "Exact velocity at any time t", "Deterministic — same input → same output", "Configurable presets"]
+            return ["Closed-form analytical ODE solver", "Exact velocity at any time t", "Deterministic — same input → same output", "8 named spring presets"]
         case "hand.draw.fill":
-            return ["Velocity threshold commit", "Rubber-band resistance", "Environment progress binding", "Cancellation-safe"]
+            return ["Velocity-threshold commit logic", "Rubber-band resistance past edge", "interactiveDismissProgress environment key", "Cancellation-safe spring settle"]
         case "timeline.selection":
-            return ["Result-builder DSL", "Parallel execution support", "async/await safe", "Per-step spring configuration"]
+            return ["@resultBuilder Parallel { } syntax", "Nested timelines as single steps", "async/await cancellation-safe", "MotionStyle time-scale support"]
         default:
-            return ["Scale + blur entry", "iOS 18 native zoom fallback", "Depth separation", "App Store quality feel"]
+            return ["iOS 18 native zoom transition", "matchedTransitionSource integration", "Depth separation via blur", "App Store–quality feel"]
         }
-    }
-
-    // MARK: - Live demo section
-
-    @ViewBuilder
-    private var demoSection: some View {
-        if item.icon == "waveform.path" {
-            SpringDemoView()
-                .opacity(actionsVisible ? 1 : 0)
-        } else if item.icon == "drop.fill" {
-            LiquidDemoView()
-                .opacity(actionsVisible ? 1 : 0)
-        }
-    }
-
-    // MARK: - Actions
-
-    private var actionsRow: some View {
-        HStack(spacing: 12) {
-            Button {
-                // open docs
-            } label: {
-                Label("Docs", systemImage: "doc.text")
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 14)
-                    .background(Color.accentColor)
-                    .foregroundStyle(.white)
-                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-            }
-            .flowSpringTap()
-
-            Button {
-                // open source
-            } label: {
-                Label("Source", systemImage: "chevron.left.forwardslash.chevron.right")
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 14)
-                    .background(Color(.secondarySystemGroupedBackground))
-                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-            }
-            .flowSpringTap()
-        }
-        .opacity(actionsVisible ? 1 : 0)
-        .offset(y: actionsVisible ? 0 : 16)
-    }
-
-    // MARK: - Entrance animation
-
-    private func runEntranceAnimation() {
-        withAnimation(.flowHero.delay(0.05))  { titleVisible   = true }
-        withAnimation(.flowSmooth.delay(0.15)) { bodyVisible    = true }
-        withAnimation(.flowSnappy.delay(0.25)) { actionsVisible = true }
     }
 }
 
 // MARK: - SpringDemoView
 
-/// Interactive spring visualiser for the physics demo card.
-struct SpringDemoView: View {
-
-    @State private var selectedPreset = 0
-    @State private var ballX: CGFloat = 0
+private struct SpringDemoView: View {
+    @State private var offset: CGSize = .zero
     @State private var isDragging = false
+    @State private var selectedIndex = 0
 
-    private let presets: [(name: String, config: SpringConfiguration)] = [
-        ("Snappy",  .snappy),
-        ("Bouncy",  .bouncy),
-        ("Hero",    .hero),
-        ("Gentle",  .gentle),
+    private let presets: [(String, SpringConfiguration)] = [
+        ("Snappy", .snappy), ("Bouncy", .bouncy), ("Hero", .hero), ("Gentle", .gentle)
     ]
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("Live Demo")
+            Text("Live Demo — Drag the ball")
                 .font(.title3.bold())
 
-            // Ball track
-            GeometryReader { proxy in
-                ZStack {
-                    // Track
-                    Capsule()
-                        .fill(Color(.tertiarySystemGroupedBackground))
-                        .frame(height: 6)
-
-                    // Ball
-                    Circle()
-                        .fill(
-                            LinearGradient(
-                                colors: [.blue, .purple],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
-                        .frame(width: 36, height: 36)
-                        .shadow(color: .blue.opacity(0.4), radius: 8)
-                        .offset(x: ballX)
-                        .gesture(
-                            DragGesture()
-                                .onChanged { v in
-                                    isDragging = true
-                                    ballX = v.translation.width
+            ZStack {
+                backgroundGrid
+                Circle()
+                    .fill(LinearGradient(colors: [.blue, .purple], startPoint: .topLeading, endPoint: .bottomTrailing))
+                    .frame(width: 56, height: 56)
+                    .shadow(color: .blue.opacity(0.4), radius: 12, y: 4)
+                    .scaleEffect(isDragging ? 1.12 : 1)
+                    .offset(offset)
+                    .gesture(
+                        DragGesture()
+                            .onChanged { v in isDragging = true; offset = v.translation }
+                            .onEnded { v in
+                                isDragging = false
+                                let vel = v.flowVelocity
+                                let cfg = presets[selectedIndex].1
+                                withAnimation(cfg.swiftUIAnimation(initialVelocity: vel.dy)) {
+                                    offset = .zero
                                 }
-                                .onEnded { _ in
-                                    isDragging = false
-                                    let config = presets[selectedPreset].config
-                                    withAnimation(config.swiftUIAnimation) {
-                                        ballX = 0
-                                    }
-                                }
-                        )
-                }
-                .frame(maxWidth: .infinity)
+                            }
+                    )
             }
-            .frame(height: 44)
+            .frame(height: 160)
+            .background(Color(.tertiarySystemGroupedBackground))
+            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
 
-            // Preset picker
-            Picker("Spring", selection: $selectedPreset) {
+            Picker("Spring", selection: $selectedIndex) {
                 ForEach(presets.indices, id: \.self) { i in
-                    Text(presets[i].name).tag(i)
+                    Text(presets[i].0).tag(i)
                 }
             }
             .pickerStyle(.segmented)
@@ -244,25 +234,52 @@ struct SpringDemoView: View {
         .background(Color(.secondarySystemGroupedBackground))
         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
+
+    private var backgroundGrid: some View {
+        Canvas { context, size in
+            let step: CGFloat = 20
+            let c = Color(.separator).opacity(0.35)
+            var x: CGFloat = 0
+            while x <= size.width  { context.stroke(Path { p in p.move(to: .init(x: x, y: 0)); p.addLine(to: .init(x: x, y: size.height)) }, with: .color(c), lineWidth: 0.5); x += step }
+            var y: CGFloat = 0
+            while y <= size.height { context.stroke(Path { p in p.move(to: .init(x: 0, y: y)); p.addLine(to: .init(x: size.width, y: y)) }, with: .color(c), lineWidth: 0.5); y += step }
+        }
+    }
 }
 
 // MARK: - LiquidDemoView
 
-struct LiquidDemoView: View {
-
-    @State private var progress: CGFloat = 0.3
+private struct LiquidDemoView: View {
+    @State private var config = LiquidRenderer.Configuration.ocean
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("Live Demo")
+            Text("Live Demo — Liquid Loader")
                 .font(.title3.bold())
 
-            LiquidLoadingView(configuration: .ocean)
+            LiquidLoadingView(configuration: config)
                 .frame(height: 80)
                 .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
 
-            Slider(value: $progress, in: 0...1)
-                .tint(.blue)
+            HStack {
+                ForEach(["Ocean", "Sunset", "Midnight"], id: \.self) { name in
+                    Button(name) {
+                        withAnimation(.flowSnappy) {
+                            switch name {
+                            case "Ocean":    config = .ocean
+                            case "Sunset":   config = .sunset
+                            default:         config = .midnight
+                            }
+                        }
+                    }
+                    .font(.caption.weight(.medium))
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 6)
+                    .background(Color(.tertiarySystemGroupedBackground))
+                    .clipShape(Capsule())
+                    .flowSpringTap(scale: 0.94)
+                }
+            }
         }
         .padding(20)
         .background(Color(.secondarySystemGroupedBackground))
@@ -271,7 +288,7 @@ struct LiquidDemoView: View {
 }
 
 #Preview {
-    FlowNavigationStack {
+    NavigationStack {
         CardDetailScreen(item: DemoItem.samples[0], namespace: Namespace().wrappedValue)
     }
 }

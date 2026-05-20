@@ -23,6 +23,8 @@ public struct FlowLink<Label: View, Destination: View>: View {
     private let label: () -> Label
     private let destination: () -> Destination
 
+    @Namespace private var zoomNamespace
+
     public init(
         transition: FlowTransitionStyle = .cinematic(),
         feedback: FeedbackStyle = .selection,
@@ -36,6 +38,25 @@ public struct FlowLink<Label: View, Destination: View>: View {
     }
 
     public var body: some View {
+        #if os(iOS)
+        if #available(iOS 18, *) {
+            NavigationLink {
+                destination()
+                    .navigationTransition(.zoom(sourceID: "flowlink", in: zoomNamespace))
+            } label: {
+                label()
+                    .matchedTransitionSource(id: "flowlink", in: zoomNamespace)
+            }
+            .simultaneousGesture(TapGesture().onEnded { _ in feedbackStyle.trigger() })
+        } else {
+            legacyBody
+        }
+        #else
+        legacyBody
+        #endif
+    }
+
+    private var legacyBody: some View {
         NavigationLink {
             destination()
                 .flowTransition(transition)
@@ -43,9 +64,7 @@ public struct FlowLink<Label: View, Destination: View>: View {
             label()
         }
         .simultaneousGesture(
-            TapGesture().onEnded { _ in
-                feedbackStyle.trigger()
-            }
+            TapGesture().onEnded { _ in feedbackStyle.trigger() }
         )
     }
 }

@@ -2,31 +2,22 @@ import SwiftUI
 
 // MARK: - FlowMotionLink
 
-/// A navigation link that coordinates a shared-element hero animation
-/// alongside a standard NavigationStack push transition.
+/// A navigation link with a built-in shared-element transition.
 ///
-/// `FlowMotionLink` wraps SwiftUI's `NavigationLink` (not a `Button` with
-/// `navigationDestination`) so navigation works correctly inside any
-/// container — `LazyVStack`, `List`, `ScrollView`, etc.
+/// On iOS 18+ the native `zoom` navigation transition is used — the card
+/// expands directly into the destination view with a system-quality animation.
+/// On iOS 17 the standard NavigationStack slide is used as fallback.
 ///
-/// The hero animation is triggered via `.simultaneousGesture` so it fires
-/// at the same time as the navigation without blocking it.
-///
-/// ## Usage
 /// ```swift
 /// @Namespace var ns
 ///
 /// FlowMotionLink(id: item.id, namespace: ns) {
 ///     CardView(item)
-///         .sharedElement(id: item.id, namespace: ns)
 /// } destination: {
 ///     DetailView(item)
-///         .sharedElementDestination(id: item.id, namespace: ns)
 /// }
 /// ```
 public struct FlowMotionLink<Source: View, Destination: View>: View {
-
-    // MARK: Properties
 
     private let id: AnyHashable
     private let namespace: Namespace.ID
@@ -34,10 +25,9 @@ public struct FlowMotionLink<Source: View, Destination: View>: View {
     private let destination: () -> Destination
     private let springConfig: SpringConfiguration
 
+    @Namespace private var zoomNamespace
     @State private var sourceFrame: CGRect = .zero
     private let registry = SharedElementRegistry.shared
-
-    // MARK: Init
 
     public init<ID: Hashable>(
         id: ID,
@@ -46,55 +36,73 @@ public struct FlowMotionLink<Source: View, Destination: View>: View {
         @ViewBuilder source: @escaping () -> Source,
         @ViewBuilder destination: @escaping () -> Destination
     ) {
-        self.id          = AnyHashable(id)
-        self.namespace   = namespace
+        self.id           = AnyHashable(id)
+        self.namespace    = namespace
         self.springConfig = spring
-        self.source      = source
-        self.destination = destination
+        self.source       = source
+        self.destination  = destination
     }
 
-    // MARK: Body
+    // MARK: - Body
 
     public var body: some View {
+        #if os(iOS)
+        if #available(iOS 18, *) {
+            modernLink
+        } else {
+            legacyLink
+        }
+        #else
+        legacyLink
+        #endif
+    }
+
+    // MARK: - iOS 18 zoom
+
+    #if os(iOS)
+    @available(iOS 18, *)
+    @ViewBuilder
+    private var modernLink: some View {
         NavigationLink {
             destination()
-                .captureGeometry(id: id, role: .destination)
-                .environment(\.heroRole, .destination(id: id))
+                .navigationTransition(.zoom(sourceID: id, in: zoomNamespace))
         } label: {
             source()
-                .captureGeometry(id: id, role: .source)
+                .matchedTransitionSource(id: id, in: zoomNamespace)
         }
         .buttonStyle(.plain)
-        // Hero trigger fires at the same time as the NavigationLink push,
-        // without consuming the tap that drives navigation.
+    }
+    #endif
+
+    // MARK: - iOS 17 fallback
+
+    @ViewBuilder
+    private var legacyLink: some View {
+        NavigationLink {
+            destination()
+        } label: {
+            source()
+        }
+        .buttonStyle(.plain)
         .simultaneousGesture(
-            TapGesture().onEnded { _ in
-                triggerHeroAnimation()
-            }
+            TapGesture().onEnded { _ in triggerHeroAnimation() }
         )
-        // Capture source frame continuously so it's fresh at tap time.
         .background(
             GeometryReader { proxy in
                 Color.clear
                     .onAppear { sourceFrame = proxy.frame(in: .global) }
-                    .onChange(of: proxy.frame(in: .global)) { _, frame in
-                        sourceFrame = frame
-                    }
+                    .onChange(of: proxy.frame(in: .global)) { _, f in sourceFrame = f }
             }
         )
     }
 
-    // MARK: - Hero animation
+    // MARK: - Hero animation (iOS 17 fallback)
 
     @MainActor
     private func triggerHeroAnimation() {
         let capturedSource = registry.frame(for: id) ?? sourceFrame
-
         Task { @MainActor in
-            // One layout pass — give the destination view time to appear
-            // and register its frame before we read it.
-            try? await Task.sleep(nanoseconds: 33_333_334)  // ~2 frames @ 60Hz
-
+            try? await Task.sleep(nanoseconds: 33_333_334)
             let destFrame = registry.frame(for: id) ?? capturedSource
             registry.beginHero(
                 id: id,
@@ -110,7 +118,6 @@ public struct FlowMotionLink<Source: View, Destination: View>: View {
 // MARK: - SharedElement modifiers
 
 public extension View {
-    /// Marks this view as a shared element source.
     func sharedElement<ID: Hashable>(
         id: ID,
         namespace: Namespace.ID,
@@ -121,7 +128,6 @@ public extension View {
             .matchedGeometryEffect(id: id, in: namespace, anchor: anchor, isSource: true)
     }
 
-    /// Marks this view as the destination counterpart of a shared element.
     func sharedElementDestination<ID: Hashable>(
         id: ID,
         namespace: Namespace.ID,
