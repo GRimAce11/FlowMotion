@@ -21,9 +21,21 @@ public enum FlowTransitionStyle {
     case identity
     /// Supply any SwiftUI `AnyTransition`.
     case custom(AnyTransition)
+    /// Two or more transitions layered simultaneously.
+    case combined([FlowTransitionStyle])
 }
 
 extension FlowTransitionStyle: @unchecked Sendable {}
+
+public extension FlowTransitionStyle {
+    /// Compose this transition with another, running both simultaneously.
+    func combined(with other: FlowTransitionStyle) -> FlowTransitionStyle {
+        if case .combined(let styles) = self {
+            return .combined(styles + [other])
+        }
+        return .combined([self, other])
+    }
+}
 
 // MARK: - View modifier
 
@@ -89,6 +101,11 @@ extension FlowTransitionStyle {
 
         case .custom(let t):
             return t
+
+        case .combined(let styles):
+            return styles
+                .map { $0.asAnyTransition(configuration: configuration) }
+                .reduce(.identity) { $0.combined(with: $1) }
         }
     }
 }

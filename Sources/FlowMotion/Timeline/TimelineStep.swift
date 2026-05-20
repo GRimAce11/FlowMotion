@@ -147,3 +147,21 @@ public func Parallel(@TimelineBuilder _ content: () -> [TimelineStep]) -> Timeli
 public func Group(@TimelineBuilder _ content: () -> [TimelineStep]) -> TimelineStep {
     .sequence(content())
 }
+
+/// Animate a state change with an explicit timing curve and duration.
+/// Use this when you need precise timing control rather than spring physics.
+///
+/// ```swift
+/// MotionTimeline {
+///     Animate(curve: .easeOut, duration: 0.3) { titleOpacity = 1 }
+///     Animate(curve: .spring(.bouncy), duration: 0.5) { cardScale = 1 }
+/// }
+/// ```
+public func Animate(
+    curve animation: Animation,
+    duration: Double,
+    delay: Double = 0,
+    body: @MainActor @escaping () -> Void
+) -> TimelineStep {
+    .animate(animation: animation, duration: duration, delay: delay, body: body)
+}

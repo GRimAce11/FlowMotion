@@ -16,9 +16,7 @@ struct GesturePlaygroundScreen: View {
             VStack(spacing: 24) {
                 demoSection
 
-                VStack(spacing: 0) {
-                    demoPicker
-                }
+                demoPicker
 
                 instructionCard
 
@@ -125,6 +123,7 @@ private struct SpringDragDemo: View {
                     .shadow(color: Color.accentColor.opacity(0.4), radius: 12, y: 4)
                     .offset(offset)
                     .scaleEffect(isDragging ? 1.15 : 1)
+                    .animation(.flowSnappy, value: isDragging)
                     .gesture(
                         DragGesture()
                             .onChanged { v in
@@ -254,7 +253,6 @@ private struct DragProgressDemo: View {
                     Text(String(format: "%.0f%%", progress * 100))
                         .font(.system(.largeTitle, design: .monospaced).bold())
                         .foregroundStyle(Color.accentColor)
-                        .contentTransition(.numericText())
                         .animation(.flowSnappy, value: progress)
                 }
                 .padding(24)

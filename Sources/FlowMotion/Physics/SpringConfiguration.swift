@@ -101,4 +101,19 @@ public extension SpringConfiguration {
 
     /// Stiff — nearly instant snap, useful for haptic feedback animations.
     static let stiff = SpringConfiguration(stiffness: 800, damping: 60)
+
+    /// Matches iOS interactive back-swipe spring feel.
+    static let interactiveSpring = SpringConfiguration.from(response: 0.35, dampingFraction: 0.82)
+
+    /// Matches iOS sheet presentation/dismissal timing.
+    static let sheetPresentation = SpringConfiguration.from(response: 0.45, dampingFraction: 0.92)
+
+    /// Keyboard-linked animations — fast, minimal bounce.
+    static let keyboardAware = SpringConfiguration.from(response: 0.22, dampingFraction: 0.95)
+
+    /// Elastic over-scroll bounce at scroll edge.
+    static let overscroll = SpringConfiguration.from(response: 0.55, dampingFraction: 0.58)
+
+    /// Matches iOS tab bar item selection animation.
+    static let tabSelection = SpringConfiguration.from(response: 0.32, dampingFraction: 0.88)
 }

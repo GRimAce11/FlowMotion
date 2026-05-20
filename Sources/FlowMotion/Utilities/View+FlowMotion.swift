@@ -48,11 +48,12 @@ public extension View {
     // MARK: Spring tap
 
     /// Adds a tactile spring-scale response to tap gestures.
+    /// Implemented as a ButtonStyle so it works correctly inside ScrollViews.
     func flowSpringTap(
         scale: CGFloat = 0.94,
         spring: SpringConfiguration = .stiff
     ) -> some View {
-        modifier(SpringTapModifier(targetScale: scale, spring: spring))
+        buttonStyle(FlowSpringButtonStyle(scale: scale, spring: spring))
     }
 
     // MARK: Morph
@@ -199,30 +200,23 @@ struct PulseModifier: ViewModifier {
     }
 }
 
-// MARK: - SpringTapModifier
+// MARK: - FlowSpringButtonStyle
 
-struct SpringTapModifier: ViewModifier {
-    let targetScale: CGFloat
-    let spring: SpringConfiguration
+/// ButtonStyle that scales down on press using a FlowMotion spring.
+/// Using ButtonStyle (vs DragGesture) lets SwiftUI coordinate press
+/// detection with ScrollView scroll recognition automatically.
+public struct FlowSpringButtonStyle: ButtonStyle {
+    public let scale: CGFloat
+    public let spring: SpringConfiguration
 
-    @State private var scale: CGFloat = 1
-    @GestureState private var pressing = false
+    public init(scale: CGFloat = 0.94, spring: SpringConfiguration = .stiff) {
+        self.scale = scale
+        self.spring = spring
+    }
 
-    func body(content: Content) -> some View {
-        content
-            .scaleEffect(pressing ? targetScale : scale)
-            // simultaneousGesture so parent Button / NavigationLink still fires
-            .simultaneousGesture(
-                DragGesture(minimumDistance: 0)
-                    .updating($pressing) { _, state, _ in state = true }
-                    .onEnded { _ in
-                        withAnimation(spring.swiftUIAnimation) { scale = 1 }
-                    }
-            )
-            .onChange(of: pressing) { _, isPressed in
-                if isPressed {
-                    withAnimation(spring.swiftUIAnimation) { scale = targetScale }
-                }
-            }
+    public func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed ? scale : 1)
+            .animation(spring.swiftUIAnimation, value: configuration.isPressed)
     }
 }

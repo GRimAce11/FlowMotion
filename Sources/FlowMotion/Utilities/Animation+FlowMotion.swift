@@ -41,6 +41,13 @@ public extension Animation {
         SpringConfiguration.gentle.swiftUIAnimation
     }
 
+    /// Matches iOS interactive back-swipe spring.
+    static var flowInteractive: Animation { SpringConfiguration.interactiveSpring.swiftUIAnimation }
+    /// Matches iOS sheet presentation.
+    static var flowSheet: Animation { SpringConfiguration.sheetPresentation.swiftUIAnimation }
+    /// Keyboard-linked fast animation.
+    static var flowKeyboard: Animation { SpringConfiguration.keyboardAware.swiftUIAnimation }
+
     // MARK: Velocity-aware constructors
 
     /// Creates a spring animation seeded with an initial velocity (pts/s).

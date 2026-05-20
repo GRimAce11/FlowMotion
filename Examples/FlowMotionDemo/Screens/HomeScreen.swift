@@ -8,8 +8,7 @@ struct HomeScreen: View {
     @Namespace private var heroNamespace
     @Environment(\.flowStyle) private var style
 
-    @State private var appeared = false
-    @State private var showAll  = false
+    @State private var showAll = false
 
     var body: some View {
         ScrollView {
@@ -24,14 +23,21 @@ struct HomeScreen: View {
 
                 cardStack
 
-                Divider()
-                    .padding(.horizontal, 20)
-                    .padding(.vertical, 8)
-                    .opacity(showAll ? 1 : 0)
+                VStack(spacing: 12) {
+                    Divider()
+                        .padding(.horizontal, 20)
+                        .padding(.vertical, 4)
 
-                systemDemoRow.opacity(showAll ? 1 : 0)
-                orchestratorCard.opacity(showAll ? 1 : 0)
-                gestureCard.opacity(showAll ? 1 : 0)
+                    systemDemoRow
+                    phase2Row
+                    orchestratorCard
+                    gestureCard
+                    scrollReactionsCard
+                    transitionComposeCard
+                }
+                .opacity(showAll ? 1 : 0)
+                .offset(y: showAll ? 0 : 16)
+                .animation(.flowHero.delay(0.45), value: showAll)
             }
             .padding(.bottom, 40)
             .frame(maxWidth: .infinity, alignment: .topLeading)
@@ -41,11 +47,10 @@ struct HomeScreen: View {
         .navigationTitle("FlowMotion")
         .navigationBarTitleDisplayMode(.large)
         .toolbar { toolbarContent }
-        .onAppear {
-            guard !appeared else { return }
-            appeared = true
-            Task { @MainActor in
-                try? await Task.sleep(nanoseconds: 150_000_000)
+        .task {
+            guard !showAll else { return }
+            try? await Task.sleep(nanoseconds: 150_000_000)
+            await MainActor.run {
                 withAnimation(.flowHero) { showAll = true }
             }
         }
@@ -156,6 +161,25 @@ struct HomeScreen: View {
         .padding(.horizontal, 20)
     }
 
+    // MARK: - Phase 2 row
+
+    private var phase2Row: some View {
+        HStack(spacing: 12) {
+            FlowLink(transition: .reveal, label: {
+                systemCard(title: "Scroll",  subtitle: "FlowScrollView", icon: "arrow.up.and.down.circle.fill", colors: [.blue, .cyan])
+            }, destination: {
+                FlowScrollDemoScreen()
+            })
+
+            FlowLink(transition: .slide(edge: .trailing), label: {
+                systemCard(title: "Compose", subtitle: "Transitions",    icon: "square.3.layers.3d",            colors: [.orange, .pink])
+            }, destination: {
+                TransitionComposeScreen()
+            })
+        }
+        .padding(.horizontal, 20)
+    }
+
     private func systemCard(title: String, subtitle: String, icon: String, colors: [Color]) -> some View {
         ZStack(alignment: .bottomLeading) {
             LinearGradient(colors: colors, startPoint: .topLeading, endPoint: .bottomTrailing)
@@ -170,13 +194,13 @@ struct HomeScreen: View {
         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
 
-    // MARK: - Orchestrator + Gesture cards
+    // MARK: - Orchestrator + Gesture + Phase 2 cards
 
     private var orchestratorCard: some View {
         FlowLink(transition: .reveal, label: {
             navRow(icon: "timeline.selection", iconColor: .orange,
                    title: "Timeline Orchestrator",
-                   subtitle: "Parallel { }, Group { }, nested timelines")
+                   subtitle: "Parallel { }, Group { }, Keyframes, Stagger")
         }, destination: {
             TimelineOrchestratorScreen()
         })
@@ -189,6 +213,26 @@ struct HomeScreen: View {
                    subtitle: "Velocity handoff, spring drag, interactive dismiss")
         }, destination: {
             GesturePlaygroundScreen()
+        })
+    }
+
+    private var scrollReactionsCard: some View {
+        FlowLink(transition: .slide(edge: .trailing), label: {
+            navRow(icon: "arrow.up.and.down.circle.fill", iconColor: .blue,
+                   title: "Scroll Reactions",
+                   subtitle: "Parallax, fade-edge, scale-on-appear")
+        }, destination: {
+            FlowScrollDemoScreen()
+        })
+    }
+
+    private var transitionComposeCard: some View {
+        FlowLink(transition: .reveal, label: {
+            navRow(icon: "square.3.layers.3d", iconColor: .orange,
+                   title: "Compose Transitions",
+                   subtitle: "a.combined(with: b) — layer any two effects")
+        }, destination: {
+            TransitionComposeScreen()
         })
     }
 
@@ -220,12 +264,14 @@ private struct Capability {
     let color: Color
 
     static let all: [Capability] = [
-        Capability(label: "Zoom Transition", icon: "arrow.up.left.and.arrow.down.right", color: .blue),
-        Capability(label: "Spring Physics",  icon: "waveform.path",      color: .purple),
-        Capability(label: "Shared Elements", icon: "star.fill",          color: .orange),
-        Capability(label: "Liquid Effects",  icon: "drop.fill",          color: .cyan),
-        Capability(label: "Timeline DSL",    icon: "timeline.selection", color: .indigo),
-        Capability(label: "Swift 6",         icon: "swift",              color: .orange),
+        Capability(label: "Zoom Transition",  icon: "arrow.up.left.and.arrow.down.right", color: .blue),
+        Capability(label: "Spring Physics",   icon: "waveform.path",                      color: .purple),
+        Capability(label: "Shared Elements",  icon: "star.fill",                          color: .orange),
+        Capability(label: "Liquid Effects",   icon: "drop.fill",                          color: .cyan),
+        Capability(label: "Timeline DSL",     icon: "timeline.selection",                 color: .indigo),
+        Capability(label: "Scroll Reactions", icon: "arrow.up.and.down.circle",           color: .teal),
+        Capability(label: "Compose",          icon: "square.3.layers.3d",                 color: .pink),
+        Capability(label: "Swift 6",          icon: "swift",                              color: .orange),
     ]
 }
 

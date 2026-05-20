@@ -70,7 +70,6 @@ public struct FlowMotionLink<Source: View, Destination: View>: View {
             source()
                 .matchedTransitionSource(id: id, in: zoomNamespace)
         }
-        .buttonStyle(.plain)
     }
     #endif
 

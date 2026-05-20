@@ -203,6 +203,7 @@ private struct SpringDemoView: View {
                     .frame(width: 56, height: 56)
                     .shadow(color: .blue.opacity(0.4), radius: 12, y: 4)
                     .scaleEffect(isDragging ? 1.12 : 1)
+                    .animation(.flowSnappy, value: isDragging)
                     .offset(offset)
                     .gesture(
                         DragGesture()
