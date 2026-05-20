@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 56;
+	objectVersion = 60;
 	objects = {
 
 /* Begin PBXBuildFile section */
@@ -97,7 +97,6 @@
 			children = (
 				00000000000000000000001D /* Preview Assets.xcassets */,
 			);
-			name = "Preview Content";
 			path = "Preview Content";
 			sourceTree = "<group>";
 		};
@@ -199,6 +198,7 @@
 				ASSTCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = GWCH534ZZW;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -224,6 +224,7 @@
 				ASSTCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = GWCH534ZZW;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -380,7 +381,7 @@
 /* Begin XCLocalSwiftPackageReference section */
 		000000000000000000000030 /* XCLocalSwiftPackageReference "../.." */ = {
 			isa = XCLocalSwiftPackageReference;
-			relativePath = "../..";
+			relativePath = ../..;
 		};
 /* End XCLocalSwiftPackageReference section */
 
@@ -391,7 +392,6 @@
 			productName = FlowMotion;
 		};
 /* End XCSwiftPackageProductDependency section */
-
 	};
 	rootObject = 000000000000000000000001 /* Project object */;
 }

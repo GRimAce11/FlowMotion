@@ -20,6 +20,7 @@ let package = Package(
         .target(
             name: "FlowMotion",
             path: "Sources/FlowMotion",
+            resources: [.process("Shaders")],
             swiftSettings: [
                 .swiftLanguageMode(.v6),
             ]

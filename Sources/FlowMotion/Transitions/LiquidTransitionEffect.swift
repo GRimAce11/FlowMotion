@@ -197,3 +197,36 @@ public struct WaveShape: Shape, Animatable {
         return path
     }
 }
+
+// MARK: - LiquidShaderTransitionModifier
+
+/// GPU-accelerated liquid transition using `distortionEffect`.
+/// Used when `shaderQuality.useGPUShaders` is true.
+struct LiquidShaderTransitionModifier: ViewModifier, Animatable {
+    var progress: CGFloat
+    var intensity: CGFloat
+
+    nonisolated var animatableData: CGFloat {
+        get { progress }
+        set { progress = newValue }
+    }
+
+    private let frequency: Float = 3.5
+    private let amplitude: Float = 26
+
+    func body(content: Content) -> some View {
+        GeometryReader { proxy in
+            content
+                .distortionEffect(
+                    Shader(function: FlowShaderLibrary.liquidEdge, arguments: [
+                        .float2(Float(proxy.size.width), Float(proxy.size.height)),
+                        .float(Float(progress)),
+                        .float(frequency),
+                        .float(amplitude * Float(intensity)),
+                        .float(Float(progress) * .pi * 4),
+                    ]),
+                    maxSampleOffset: CGSize(width: Double(amplitude), height: Double(amplitude))
+                )
+        }
+    }
+}

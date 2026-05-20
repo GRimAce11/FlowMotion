@@ -124,21 +124,43 @@ public struct LiquidLoadingView: View {
     }
 
     public var body: some View {
+        // Use GPU shader when quality permits; fall back to Canvas on low-end devices
+        ShaderAwareLiquidView(configuration: configuration)
+    }
+}
+
+// MARK: - ShaderAwareLiquidView
+
+private struct ShaderAwareLiquidView: View {
+    let configuration: LiquidRenderer.Configuration
+    @Environment(\.shaderQuality) private var quality
+
+    var body: some View {
+        if quality.useGPUShaders {
+            MetaballShaderView(config: MetaballShaderConfig(
+                blobCount: quality.metaballBlobCount,
+                threshold: 1.2,
+                softness: quality.metaballSoftness,
+                primaryColor: configuration.primaryColor,
+                secondaryColor: configuration.secondaryColor
+            ))
+        } else {
+            // Canvas fallback — original implementation
+            canvasFallback
+        }
+    }
+
+    private var canvasFallback: some View {
         TimelineView(.animation) { timeline in
             let progress = CGFloat(timeline.date.timeIntervalSinceReferenceDate.truncatingRemainder(dividingBy: 2)) / 2
-
             Canvas(rendersAsynchronously: false) { context, size in
                 var mutableCtx = context
                 let renderer = LiquidRenderer(configuration: configuration)
-                renderer.draw(
-                    frame: CGRect(origin: .zero, size: size),
-                    progress: progress,
-                    context: &mutableCtx
-                )
+                renderer.draw(frame: CGRect(origin: .zero, size: size), progress: progress, context: &mutableCtx)
             }
         }
         .blur(radius: configuration.blurRadius)
-        .drawingGroup()   // rasterise the blur in a single Metal layer
+        .drawingGroup()
     }
 }
 

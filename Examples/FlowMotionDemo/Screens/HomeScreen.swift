@@ -30,6 +30,7 @@ struct HomeScreen: View {
 
                     systemDemoRow
                     phase2Row
+                    phase3Row
                     orchestratorCard
                     gestureCard
                     scrollReactionsCard
@@ -180,6 +181,25 @@ struct HomeScreen: View {
         .padding(.horizontal, 20)
     }
 
+    // MARK: - Phase 3 row
+
+    private var phase3Row: some View {
+        HStack(spacing: 12) {
+            FlowLink(transition: .cinematic(), label: {
+                systemCard(title: "GPU Shaders", subtitle: "Metal LayerEffect", icon: "cpu.fill", colors: [.purple, .indigo])
+            }, destination: {
+                GPUShaderDemoScreen()
+            })
+
+            FlowLink(transition: .reveal, label: {
+                systemCard(title: "Director", subtitle: "Narrative Motion", icon: "film.fill", colors: [.orange, .red])
+            }, destination: {
+                MotionDirectorDemoScreen()
+            })
+        }
+        .padding(.horizontal, 20)
+    }
+
     private func systemCard(title: String, subtitle: String, icon: String, colors: [Color]) -> some View {
         ZStack(alignment: .bottomLeading) {
             LinearGradient(colors: colors, startPoint: .topLeading, endPoint: .bottomTrailing)
@@ -272,6 +292,8 @@ private struct Capability {
         Capability(label: "Scroll Reactions", icon: "arrow.up.and.down.circle",           color: .teal),
         Capability(label: "Compose",          icon: "square.3.layers.3d",                 color: .pink),
         Capability(label: "Swift 6",          icon: "swift",                              color: .orange),
+        Capability(label: "GPU Shaders",      icon: "cpu.fill",                           color: .purple),
+        Capability(label: "Narrative",        icon: "film.fill",                          color: .red),
     ]
 }
 
