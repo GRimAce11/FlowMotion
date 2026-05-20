@@ -9,8 +9,12 @@ struct HomeScreen: View {
     @Environment(\.flowStyle) private var style
 
     @State private var appeared = false
+    @State private var showAll  = false
 
     var body: some View {
+        // A single VStack (not LazyVStack) as the direct child of ScrollView.
+        // LazyVStack inside VStack inside ScrollView is a known SwiftUI layout
+        // bug where the lazy stack is positioned at the bottom of the viewport.
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
                 header
@@ -18,11 +22,31 @@ struct HomeScreen: View {
                     .padding(.top, 12)
                     .padding(.bottom, 20)
 
-                capabilitySection
-                    .padding(.bottom, 8)
+                capabilityChips
+                    .padding(.bottom, 12)
 
-                cardGrid
+                cardStack
+
+                Divider()
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 8)
+
+                systemDemoRow
+                    .opacity(showAll ? 1 : 0)
+                    .animation(.flowSmooth.delay(0.45), value: showAll)
+
+                orchestratorCard
+                    .opacity(showAll ? 1 : 0)
+                    .animation(.flowSmooth.delay(0.50), value: showAll)
+
+                gestureCard
+                    .opacity(showAll ? 1 : 0)
+                    .animation(.flowSmooth.delay(0.55), value: showAll)
             }
+            .padding(.bottom, 40)
+            // Without this the VStack can stretch to fill the full ScrollView
+            // height, which displaces the content.
+            .frame(maxWidth: .infinity, alignment: .topLeading)
         }
         .scrollIndicators(.hidden)
         .background(Color(.systemGroupedBackground))
@@ -32,16 +56,14 @@ struct HomeScreen: View {
         .onAppear {
             guard !appeared else { return }
             appeared = true
-            // Short delay so NavigationStack's own appear animation finishes first
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
-                withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
-                    showAll = true
-                }
+            // Let NavigationStack's own appear animation settle (~1 frame)
+            // before starting FlowMotion entrance.
+            Task { @MainActor in
+                try? await Task.sleep(nanoseconds: 150_000_000)  // 150 ms
+                withAnimation(.flowHero) { showAll = true }
             }
         }
     }
-
-    @State private var showAll = false
 
     // MARK: - Toolbar
 
@@ -66,17 +88,18 @@ struct HomeScreen: View {
                 .font(.title3.weight(.medium))
                 .foregroundStyle(.secondary)
 
-            Text("Tap any card to see it expand with a zoom transition.")
+            Text("Tap any card — it expands with the iOS 18 zoom transition.")
                 .font(.footnote)
                 .foregroundStyle(.tertiary)
         }
         .opacity(showAll ? 1 : 0)
         .offset(y: showAll ? 0 : 10)
+        .animation(.flowHero, value: showAll)
     }
 
-    // MARK: - Capability chips
+    // MARK: - Capability chips (plain HStack — no nested ScrollView)
 
-    private var capabilitySection: some View {
+    private var capabilityChips: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 8) {
                 ForEach(Capability.all, id: \.label) { cap in
@@ -91,14 +114,17 @@ struct HomeScreen: View {
             }
             .padding(.horizontal, 20)
         }
+        // Explicit height so the horizontal ScrollView doesn't expand
+        // vertically and displace the cards below it.
+        .frame(height: 38)
         .opacity(showAll ? 1 : 0)
+        .animation(.flowSmooth.delay(0.08), value: showAll)
     }
 
-    // MARK: - Card grid
+    // MARK: - Card stack (plain VStack — not LazyVStack)
 
-    private var cardGrid: some View {
-        LazyVStack(spacing: 16) {
-            // Feature demo cards — each uses the native zoom transition
+    private var cardStack: some View {
+        VStack(spacing: 16) {
             ForEach(Array(DemoItem.samples.enumerated()), id: \.element.id) { index, item in
                 FlowMotionLink(id: item.id, namespace: heroNamespace) {
                     DemoCard(item: item)
@@ -109,23 +135,13 @@ struct HomeScreen: View {
                 .flowSpringTap(scale: 0.96)
                 .padding(.horizontal, 20)
                 .opacity(showAll ? 1 : 0)
-                .scaleEffect(showAll ? 1 : 0.93)
+                .scaleEffect(showAll ? 1 : 0.94, anchor: .center)
                 .animation(
-                    .spring(response: 0.45, dampingFraction: 0.82)
-                        .delay(0.1 + Double(index) * 0.06),
+                    .flowHero.delay(0.1 + Double(index) * 0.06),
                     value: showAll
                 )
             }
-
-            Divider().padding(.horizontal, 20).padding(.vertical, 8)
-
-            systemDemoRow
-
-            orchestratorCard
-
-            gestureCard
         }
-        .padding(.bottom, 40)
     }
 
     // MARK: - System demo row
@@ -133,27 +149,25 @@ struct HomeScreen: View {
     private var systemDemoRow: some View {
         HStack(spacing: 12) {
             FlowLink(transition: .slide(), label: {
-                systemCard(title: "Presets", subtitle: "MotionStyle", icon: "slider.horizontal.3", colors: [.teal, .cyan])
+                systemCard(title: "Presets",    subtitle: "MotionStyle",  icon: "slider.horizontal.3",  colors: [.teal, .cyan])
             }, destination: {
                 TransitionShowcaseScreen()
             })
 
             FlowLink(transition: .cinematic(), label: {
-                systemCard(title: "Onboarding", subtitle: "Cinematic", icon: "play.rectangle.fill", colors: [.indigo, .purple])
+                systemCard(title: "Onboarding", subtitle: "Cinematic",   icon: "play.rectangle.fill",  colors: [.indigo, .purple])
             }, destination: {
                 OnboardingScreen()
             })
         }
         .padding(.horizontal, 20)
-        .opacity(showAll ? 1 : 0)
-        .animation(.spring(response: 0.45, dampingFraction: 0.82).delay(0.5), value: showAll)
     }
 
     private func systemCard(title: String, subtitle: String, icon: String, colors: [Color]) -> some View {
         ZStack(alignment: .bottomLeading) {
             LinearGradient(colors: colors, startPoint: .topLeading, endPoint: .bottomTrailing)
             VStack(alignment: .leading, spacing: 2) {
-                Image(systemName: icon).font(.title3).foregroundStyle(.white.opacity(0.8))
+                Image(systemName: icon).font(.title3).foregroundStyle(.white.opacity(0.85))
                 Text(title).font(.headline.bold()).foregroundStyle(.white)
                 Text(subtitle).font(.caption).foregroundStyle(.white.opacity(0.7))
             }
@@ -163,36 +177,26 @@ struct HomeScreen: View {
         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
 
-    // MARK: - Orchestrator card
+    // MARK: - Orchestrator + Gesture cards
 
     private var orchestratorCard: some View {
         FlowLink(transition: .reveal, label: {
-            navRow(
-                icon: "timeline.selection", iconColor: .orange,
-                title: "Timeline Orchestrator",
-                subtitle: "Parallel { }, Group { }, nested timelines"
-            )
+            navRow(icon: "timeline.selection", iconColor: .orange,
+                   title: "Timeline Orchestrator",
+                   subtitle: "Parallel { }, Group { }, nested timelines")
         }, destination: {
             TimelineOrchestratorScreen()
         })
-        .opacity(showAll ? 1 : 0)
-        .animation(.spring(response: 0.45, dampingFraction: 0.82).delay(0.55), value: showAll)
     }
-
-    // MARK: - Gesture card
 
     private var gestureCard: some View {
         FlowLink(transition: .slide(edge: .trailing), label: {
-            navRow(
-                icon: "hand.draw.fill", iconColor: .pink,
-                title: "Gesture Playground",
-                subtitle: "Velocity handoff, spring drag, interactive dismiss"
-            )
+            navRow(icon: "hand.draw.fill", iconColor: .pink,
+                   title: "Gesture Playground",
+                   subtitle: "Velocity handoff, spring drag, interactive dismiss")
         }, destination: {
             GesturePlaygroundScreen()
         })
-        .opacity(showAll ? 1 : 0)
-        .animation(.spring(response: 0.45, dampingFraction: 0.82).delay(0.60), value: showAll)
     }
 
     private func navRow(icon: String, iconColor: Color, title: String, subtitle: String) -> some View {
@@ -215,7 +219,7 @@ struct HomeScreen: View {
     }
 }
 
-// MARK: - Capability chips
+// MARK: - Capability chips data
 
 private struct Capability {
     let label: String
@@ -224,11 +228,11 @@ private struct Capability {
 
     static let all: [Capability] = [
         Capability(label: "Zoom Transition", icon: "arrow.up.left.and.arrow.down.right", color: .blue),
-        Capability(label: "Spring Physics",  icon: "waveform.path",          color: .purple),
-        Capability(label: "Shared Elements", icon: "star.fill",              color: .orange),
-        Capability(label: "Liquid",          icon: "drop.fill",              color: .cyan),
-        Capability(label: "Timeline DSL",    icon: "timeline.selection",     color: .indigo),
-        Capability(label: "Swift 6",         icon: "swift",                  color: .orange),
+        Capability(label: "Spring Physics",  icon: "waveform.path",      color: .purple),
+        Capability(label: "Shared Elements", icon: "star.fill",          color: .orange),
+        Capability(label: "Liquid Effects",  icon: "drop.fill",          color: .cyan),
+        Capability(label: "Timeline DSL",    icon: "timeline.selection", color: .indigo),
+        Capability(label: "Swift 6",         icon: "swift",              color: .orange),
     ]
 }
 

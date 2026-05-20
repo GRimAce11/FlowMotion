@@ -26,12 +26,10 @@ struct CardDetailScreen: View {
         // Interactive dismiss so users can drag back
         .flowInteractiveDismiss(edge: .bottom)
         .onAppear {
-            // Small delay lets the zoom/push animation finish before
-            // content starts animating in, so both play cleanly.
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
-                withAnimation(.spring(response: 0.5, dampingFraction: 0.78)) {
-                    contentVisible = true
-                }
+            // Let the zoom push animation finish before content animates in.
+            Task { @MainActor in
+                try? await Task.sleep(nanoseconds: 250_000_000)  // 250 ms
+                withAnimation(.flowHero) { contentVisible = true }
             }
         }
     }
@@ -89,7 +87,7 @@ struct CardDetailScreen: View {
                 .font(.title3.bold())
                 .opacity(contentVisible ? 1 : 0)
                 .offset(y: contentVisible ? 0 : 20)
-                .animation(.spring(response: 0.45, dampingFraction: 0.8).delay(0.0), value: contentVisible)
+                .animation(.flowHero.delay(0.0), value: contentVisible)
 
             Text(item.detail)
                 .font(.body)
@@ -97,7 +95,7 @@ struct CardDetailScreen: View {
                 .lineSpacing(4)
                 .opacity(contentVisible ? 1 : 0)
                 .offset(y: contentVisible ? 0 : 16)
-                .animation(.spring(response: 0.45, dampingFraction: 0.8).delay(0.05), value: contentVisible)
+                .animation(.flowHero.delay(0.05), value: contentVisible)
         }
     }
 
@@ -107,7 +105,7 @@ struct CardDetailScreen: View {
                 .font(.title3.bold())
                 .opacity(contentVisible ? 1 : 0)
                 .offset(y: contentVisible ? 0 : 16)
-                .animation(.spring(response: 0.45, dampingFraction: 0.8).delay(0.10), value: contentVisible)
+                .animation(.flowHero.delay(0.10), value: contentVisible)
 
             ForEach(Array(featurePoints.enumerated()), id: \.offset) { index, point in
                 Label(point, systemImage: "checkmark.circle.fill")
@@ -116,7 +114,7 @@ struct CardDetailScreen: View {
                     .opacity(contentVisible ? 1 : 0)
                     .offset(y: contentVisible ? 0 : 12)
                     .animation(
-                        .spring(response: 0.4, dampingFraction: 0.8)
+                        .flowSnappy
                             .delay(0.12 + Double(index) * 0.04),
                         value: contentVisible
                     )
@@ -130,12 +128,12 @@ struct CardDetailScreen: View {
             SpringDemoView()
                 .opacity(contentVisible ? 1 : 0)
                 .offset(y: contentVisible ? 0 : 20)
-                .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.30), value: contentVisible)
+                .animation(.flowHero.delay(0.30), value: contentVisible)
         } else if item.icon == "drop.fill" {
             LiquidDemoView()
                 .opacity(contentVisible ? 1 : 0)
                 .offset(y: contentVisible ? 0 : 20)
-                .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.30), value: contentVisible)
+                .animation(.flowHero.delay(0.30), value: contentVisible)
         }
     }
 
@@ -146,7 +144,7 @@ struct CardDetailScreen: View {
         }
         .opacity(contentVisible ? 1 : 0)
         .offset(y: contentVisible ? 0 : 16)
-        .animation(.spring(response: 0.45, dampingFraction: 0.8).delay(0.40), value: contentVisible)
+        .animation(.flowHero.delay(0.40), value: contentVisible)
     }
 
     private func actionButton(label: String, icon: String, primary: Bool, action: @escaping () -> Void) -> some View {
