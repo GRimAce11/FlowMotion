@@ -8,44 +8,30 @@ struct HomeScreen: View {
     @Namespace private var heroNamespace
     @Environment(\.flowStyle) private var style
 
-    // Per-card visibility so cards are never in the layout while invisible.
-    // opacity(0) preserves layout space; conditional rendering removes it.
-    @State private var appeared        = false
-    @State private var showHeader      = false
-    @State private var showChips       = false
-    @State private var showCards       = Array(repeating: false, count: DemoItem.samples.count)
-    @State private var showFooter      = false
+    @State private var appeared = false
+    @State private var showAll  = false
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
+                header
+                    .padding(.horizontal, 20)
+                    .padding(.top, 12)
+                    .padding(.bottom, 20)
 
-                if showHeader {
-                    header
-                        .padding(.horizontal, 20)
-                        .padding(.top, 12)
-                        .padding(.bottom, 20)
-                        .transition(.opacity.combined(with: .move(edge: .top)))
-                }
+                capabilityChips
+                    .padding(.bottom, 12)
 
-                if showChips {
-                    capabilityChips
-                        .padding(.bottom, 12)
-                        .transition(.opacity)
-                }
-
-                // Cards — each added individually so stagger creates no gap
                 cardStack
 
-                if showFooter {
-                    Divider()
-                        .padding(.horizontal, 20)
-                        .padding(.vertical, 8)
+                Divider()
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 8)
+                    .opacity(showAll ? 1 : 0)
 
-                    systemDemoRow
-                    orchestratorCard
-                    gestureCard
-                }
+                systemDemoRow.opacity(showAll ? 1 : 0)
+                orchestratorCard.opacity(showAll ? 1 : 0)
+                gestureCard.opacity(showAll ? 1 : 0)
             }
             .padding(.bottom, 40)
             .frame(maxWidth: .infinity, alignment: .topLeading)
@@ -58,26 +44,10 @@ struct HomeScreen: View {
         .onAppear {
             guard !appeared else { return }
             appeared = true
-            runEntrance()
-        }
-    }
-
-    @MainActor
-    private func runEntrance() {
-        Task { @MainActor in
-            // 1. Header + chips
-            try? await Task.sleep(nanoseconds: 120_000_000)
-            withAnimation(.flowSmooth) { showHeader = true; showChips = true }
-
-            // 2. Cards staggered — 70 ms apart
-            for i in 0..<DemoItem.samples.count {
-                try? await Task.sleep(nanoseconds: 70_000_000)
-                withAnimation(.flowHero) { showCards[i] = true }
+            Task { @MainActor in
+                try? await Task.sleep(nanoseconds: 150_000_000)
+                withAnimation(.flowHero) { showAll = true }
             }
-
-            // 3. Footer rows
-            try? await Task.sleep(nanoseconds: 60_000_000)
-            withAnimation(.flowSmooth) { showFooter = true }
         }
     }
 
@@ -108,6 +78,9 @@ struct HomeScreen: View {
                 .font(.footnote)
                 .foregroundStyle(.tertiary)
         }
+        .opacity(showAll ? 1 : 0)
+        .offset(y: showAll ? 0 : 8)
+        .animation(.flowSmooth, value: showAll)
     }
 
     // MARK: - Capability chips (plain HStack — no nested ScrollView)
@@ -130,30 +103,36 @@ struct HomeScreen: View {
         // Explicit height so the horizontal ScrollView doesn't expand
         // vertically and displace the cards below it.
         .frame(height: 38)
+        .opacity(showAll ? 1 : 0)
+        .animation(.flowSmooth.delay(0.05), value: showAll)
     }
 
     // MARK: - Card stack
-    // Each card is conditionally rendered so hidden cards take zero layout space.
+    //
+    // Cards use frame(height:) + padding animation instead of opacity(0) or
+    // conditional rendering. When showAll = false, height = 0 and bottom
+    // padding = 0 → zero layout space, no gap. When showAll = true, height
+    // springs to 180 and padding springs to 16, staggered per card.
 
     private var cardStack: some View {
-        VStack(spacing: 16) {
+        VStack(spacing: 0) {
             ForEach(Array(DemoItem.samples.enumerated()), id: \.element.id) { index, item in
-                if index < showCards.count && showCards[index] {
-                    FlowMotionLink(id: item.id, namespace: heroNamespace) {
-                        DemoCard(item: item)
-                            .frame(height: 180)
-                    } destination: {
-                        CardDetailScreen(item: item, namespace: heroNamespace)
-                    }
-                    .flowSpringTap(scale: 0.96)
-                    .padding(.horizontal, 20)
-                    .transition(
-                        .asymmetric(
-                            insertion: .opacity.combined(with: .scale(scale: 0.94, anchor: .center)),
-                            removal:   .opacity
-                        )
-                    )
+                FlowMotionLink(id: item.id, namespace: heroNamespace) {
+                    DemoCard(item: item)
+                } destination: {
+                    CardDetailScreen(item: item, namespace: heroNamespace)
                 }
+                .flowSpringTap(scale: 0.96)
+                .frame(height: showAll ? 180 : 0)
+                .padding(.horizontal, 20)
+                .padding(.bottom, showAll ? 16 : 0)
+                .opacity(showAll ? 1 : 0)
+                .clipped()
+                .allowsHitTesting(showAll)
+                .animation(
+                    .flowHero.delay(Double(index) * 0.07),
+                    value: showAll
+                )
             }
         }
     }
